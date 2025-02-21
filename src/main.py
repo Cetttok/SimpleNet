@@ -4,9 +4,10 @@ from PIL import Image
 import numpy
 import os
 imageSize = 8
-hiddenLayerSize = 10
-epochCount = 2000
+hiddenLayerSize = 40
+epochCount =10000
 learningSpeed = 0.01
+godValue = 1
 class FullConnectedNetwork:
     def __init__(self, firstLayerSize, hiddenSize,lastLayerSize):
         self.mWeights =  [Variable(torch.FloatTensor(hiddenSize,firstLayerSize).normal_(0.1), requires_grad = True), 
@@ -17,7 +18,13 @@ class FullConnectedNetwork:
 
     def forward(self, input):
         for i in range(len(self.mWeights)):
-            input = torch.tanh(self.mWeights[i].mv(input).add_(self.mBias[i]))
+            input = (self.mWeights[i].mv(input).add_(self.mBias[i]))
+            if (i == len(self.mWeights)-1):
+                input = torch.softmax(input,dim =0)
+            else:
+                input = torch.tanh(input)
+        
+                
             #torch.tanh
             #input = nn.ReLU(input)
         self.mLastResult = input
@@ -52,7 +59,13 @@ class FullConnectedNetwork:
 #        net.learn(0.1,outputs[ii][0])
 
 #print("weights:" + str(net.mWeights) + "\nbias:"+str(net.mBias))
-
+def getMaxId(list):
+    result = 0
+    for i in range(1,len(list)):
+    
+        if list[i] > list[result]:
+            result = i
+    return result        
 dirList = os.listdir("../data/64")
 
 print(dirList)
@@ -60,17 +73,22 @@ print(dirList)
 dataImages = []
 dataImagesOutputs = []
 for imageName in dirList:
-    dataImagesOutputs.append(float(imageName[len(imageName)-5])/10)
+    dataImagesOutputs.append(torch.FloatTensor([0,0,0,0,0,0,0,0,0,0]))
+    print(int(imageName[len(imageName)-5]))
+    dataImagesOutputs[len(dataImagesOutputs)-1][int(imageName[len(imageName)-5])] = godValue
     dataImages.append((torch.FloatTensor(numpy.array(Image.open("../data/64/"+imageName).convert('L')).ravel().tolist())*-1 + 255) / 255)
 #print(dataImages[0])
 net = FullConnectedNetwork(imageSize**2,hiddenLayerSize,10)
+
+
+
 for i in range(epochCount):
     
     print(str(i) + " epoch:")
     print( str(dataImagesOutputs[3]) +" result:" +  str((net.forward(dataImages[3]))))
     correct = 0;    
     for imageId in range(len(dataImages)):
-        if round(float(net.forward(dataImages[imageId])[0]),1) == dataImagesOutputs[imageId]:
+        if getMaxId(net.forward(dataImages[imageId]))== getMaxId(dataImagesOutputs[imageId]):
             correct+= 1  
         net.learn(learningSpeed,dataImagesOutputs[imageId])
     print("acc = " + str(correct/len(dataImages)))
