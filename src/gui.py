@@ -45,8 +45,8 @@ def onResize(event):
  #   canvas.destroy()
     print("OnResize")
   #  canvas = Canvas(bg=backgroundColor, width=int(root.winfo_width()), height=int(root.winfo_height()))
-    penRadX = round(int((root.winfo_width())/imageSize))
-    penRadY = round(int((root.winfo_height())/imageSize))
+    penRadX = round(int((root.winfo_width())/imageSize)*1.5)
+    penRadY = round(int((root.winfo_height())/imageSize)*1.5)
     reDraw(canvas)
     canvas.config(width=int(root.winfo_width()), height=int(root.winfo_height()))
     #canvas.pack()
@@ -65,8 +65,8 @@ root.update()
 print(root.size())
 print(int(root.winfo_height()))
 print(int(root.winfo_width()))
-penRadX = round(int((root.winfo_width())/imageSize))
-penRadY = round(int((root.winfo_height())/imageSize))
+penRadX = round(int((root.winfo_width())/imageSize)*1.5)
+penRadY = round(int((root.winfo_height())/imageSize)*1.5)
 canvas = Canvas(bg=backgroundColor, width=int(root.winfo_width()), height=int(root.winfo_height()))
 root.bind("<BackSpace>", onResize)
 canvas.pack()
@@ -95,7 +95,7 @@ def getPixels(fromCanvas):
     
     img.save(imageFileName + ".png")
 
-    return torch.flatten((torch.FloatTensor(numpy.array(img)).unsqueeze(0)) / 255)
+    return (torch.FloatTensor(numpy.array(img)).unsqueeze(0) / 255)
 def onMouseRelease(event):
     global mouseBtn1
     print("released")
@@ -114,17 +114,24 @@ canvas.bind("<ButtonRelease-1>", onMouseRelease)
 class AnotherNet(nn.Module):
     def __init__(self):
         super(AnotherNet, self).__init__()
-        #self.layer1 = nn.Conv2d(in_channels=1, out_channels=coresCount, kernel_size=coresSize)
-        self.layer1 = nn.Linear(imageSize*imageSize, hiddenLayerSize)
-        self.layer2 = nn.Linear(hiddenLayerSize , hiddenLayerSize)
-        self.layer3 = nn.Linear(hiddenLayerSize, 10)
+        self.conv1 = nn.Conv2d(1, 5, kernel_size=5)
+        self.relu1 = nn.Tanh()
+        self.pool1 = nn.MaxPool2d(kernel_size=2)
+        self.fc1 = nn.Linear(720, 50)
+        self.fc2 = nn.Linear(50, 10)        
     def forward(self, input):
-        input = F.relu(self.layer1(input))
-        #print(input)
-        input = F.relu(self.layer2(input))
-        
-        input = F.softmax(self.layer3(input),dim=0)
-        return input
+        input = self.relu1(self.conv1(input))
+        input = self.pool1(input)
+        input  = torch.flatten(input)
+        input  = torch.tanh(self.fc1(input))
+        input = self.fc2(input)
+        return torch.softmax(input, dim = 0)
+    
+    
+    
+    
+    
+    
 
     
 
@@ -146,7 +153,8 @@ net2 = AnotherNet()
 #model = AnotherNet()
 net2.load_state_dict(torch.load(pathToSave, weights_only=True))
 net2.eval()
-
+list = [2,2,1,2,3,5,5,6,7]
+print ("FUK - " + str(getMaxId(list)))
 
 
 #root.bind("<BackSpace>",reDraw)
@@ -162,8 +170,10 @@ def getMaxId(list):
 def onReturn(event):
     #saveAsPng(canvas, imageFileName)
     print("Result:")
+    result = (net2.forward(getPixels(canvas))) 
     #print(len(getPixels(canvas)))
-    print(getMaxId(net2.forward(getPixels(canvas))))
+    print(result)
+    print(torch.argmax(result))
     print("__________")
 root.bind("<Return>", onReturn)
 
